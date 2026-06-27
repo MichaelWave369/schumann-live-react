@@ -4,6 +4,7 @@ import App from './App.jsx';
 import './styles.css';
 import './observations.css';
 import './analytics.css';
+import './watchtower.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
