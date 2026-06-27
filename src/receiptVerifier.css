@@ -1,0 +1,36 @@
+.receipt-verifier {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.verify-result {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.1rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  padding: 0.45rem 0.65rem;
+  background: rgba(2, 6, 23, 0.36);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.verify-result.matched {
+  color: var(--green);
+  border-color: rgba(134,239,172,0.28);
+}
+
+.verify-result.mismatch,
+.verify-result.error {
+  color: var(--red);
+  border-color: rgba(251,113,133,0.32);
+}
+
+.verify-result.checking {
+  color: var(--cyan);
+  border-color: rgba(34,211,238,0.26);
+}
