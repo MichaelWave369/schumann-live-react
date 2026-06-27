@@ -1,0 +1,20 @@
+{
+  "name": "schumann-live-react",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A claim-safe live Schumann resonance and space-weather dashboard built with React and Vite.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {}
+}
