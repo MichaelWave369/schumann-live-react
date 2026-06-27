@@ -6,14 +6,19 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 
 - Live or near-live Schumann spectrogram image with cache-busted refreshes.
 - Short EIRM hero identity with the full name preserved as subtitle.
+- EIRM logo mark: Earth, ionosphere rings, and resonance waveform.
 - Feed freshness console with local and UTC refresh receipts.
+- Station/source selector with configured source, Tomsk visual feed preset, and custom permitted image URL mode.
 - Reference Schumann mode grid: SR1 through SR5.
 - Optional measured Schumann JSON mode provider.
+- Data-confidence badges: visual, reference, measured, NOAA, and ledger.
+- Refresh timeline strip for recent feed checks.
 - NOAA planetary Kp context.
 - NOAA GOES X-ray flux context.
 - NOAA real-time solar wind context.
 - Claim-safe source ledger and clear data boundaries.
 - Configured source map for quick audit and debugging.
+- Mobile-polished layout for phone-sized screens.
 
 ## Claim boundary
 
@@ -32,6 +37,16 @@ Default sources are configurable in `.env.example`.
 - NOAA real-time solar wind: `https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json`
 
 Check the terms and usage rules of any spectrogram or Schumann provider before public deployment. NOAA endpoints are public, but production apps should still cache politely and handle downtime gracefully.
+
+## Station / source selector
+
+The visual station selector currently includes:
+
+- **Configured source**: whatever `VITE_SR_SPECTROGRAM_URL` points to.
+- **Tomsk visual feed**: the current default public image preset.
+- **Custom image URL**: a runtime input for any permitted spectrogram image URL.
+
+The selector changes the visual spectrogram only. Reference harmonics and optional measured JSON remain governed separately so the dashboard does not mix image receipts with numerical measurement claims.
 
 ## Optional Schumann JSON shape
 
