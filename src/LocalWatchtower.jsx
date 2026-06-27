@@ -100,6 +100,12 @@ function buildSnapshot(data, states, rules) {
   };
 }
 
+function withoutReceiptId(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const { receiptId: _receiptId, ...snapshot } = payload;
+  return snapshot;
+}
+
 function buildMarkdownReport(snapshot, receiptId) {
   const values = snapshot.values;
   return [
@@ -169,6 +175,7 @@ export default function LocalWatchtower({ data }) {
   const [rules, setRules] = useState(safeGetRules);
   const [copyState, setCopyState] = useState('');
   const [receiptId, setReceiptId] = useState('');
+  const [verifyResult, setVerifyResult] = useState(null);
 
   useEffect(() => {
     safeSaveRules(rules);
@@ -223,6 +230,36 @@ export default function LocalWatchtower({ data }) {
     downloadJson(`eirm-current-snapshot-${new Date().toISOString().slice(0, 10)}.json`, { ...snapshot, receiptId: receiptId || 'pending' });
   }
 
+  function verifySnapshotJson(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setVerifyResult({ state: 'checking', message: 'Checking receipt…' });
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const payload = JSON.parse(String(reader.result || ''));
+        const expected = payload.receiptId;
+        const candidate = withoutReceiptId(payload);
+        if (!expected || !candidate) throw new Error('Missing receipt payload.');
+        const computed = await hashSnapshot(candidate);
+        const matched = computed === expected;
+        setVerifyResult({
+          state: matched ? 'matched' : 'mismatch',
+          message: matched ? 'Receipt matches this snapshot JSON.' : 'Receipt mismatch. The JSON may have changed or used another hashing mode.',
+          expected,
+          computed
+        });
+      } catch {
+        setVerifyResult({ state: 'error', message: 'Could not verify that snapshot JSON file.' });
+      } finally {
+        input.value = '';
+      }
+    };
+    reader.readAsText(file);
+  }
+
   return (
     <article className={`panel watchtower ${states.overall}`}>
       <div className="panel-head">
@@ -253,6 +290,13 @@ export default function LocalWatchtower({ data }) {
           <div className="receipt-id">
             <span>receipt id</span>
             <code>{receiptId ? `${receiptId.slice(0, 24)}…` : 'hashing…'}</code>
+          </div>
+          <div className="receipt-verifier">
+            <label className="file-button small-button">
+              Verify snapshot JSON
+              <input type="file" accept="application/json" onChange={verifySnapshotJson} />
+            </label>
+            {verifyResult ? <small className={`verify-result ${verifyResult.state}`}>{verifyResult.message}</small> : null}
           </div>
         </div>
         <div className="snapshot-actions">
