@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import LocalWatchtower from './LocalWatchtower.jsx';
 
 function numberOrNull(value) {
   const number = Number(value);
@@ -98,53 +97,39 @@ export default function ObservationAnalytics({ observations }) {
     };
   }, [observations]);
 
-  const latestSnapshot = analytics.newest || {};
-
   return (
-    <>
-      <article className="panel observation-analytics">
-        <div className="panel-head">
-          <div>
-            <p className="eyebrow">observation analytics</p>
-            <h2>Local review summary</h2>
-          </div>
-          <span className="receipt-tag">claim-safe · browser only</span>
+    <article className="panel observation-analytics">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">observation analytics</p>
+          <h2>Local review summary</h2>
         </div>
+        <span className="receipt-tag">claim-safe · browser only</span>
+      </div>
 
-        <div className="analytics-grid">
-          <div><span>Total marks</span><strong>{analytics.total}</strong><small>stored locally</small></div>
-          <div><span>Avg Kp</span><strong>{formatNumber(analytics.averageKp, 1)}</strong><small>logged marks only</small></div>
-          <div><span>Avg wind</span><strong>{formatNumber(analytics.averageWind, 0, ' km/s')}</strong><small>logged marks only</small></div>
-          <div><span>Common X-ray</span><strong>{analytics.commonXrayClass}</strong><small>logged marks only</small></div>
-        </div>
+      <div className="analytics-grid">
+        <div><span>Total marks</span><strong>{analytics.total}</strong><small>stored locally</small></div>
+        <div><span>Avg Kp</span><strong>{formatNumber(analytics.averageKp, 1)}</strong><small>logged marks only</small></div>
+        <div><span>Avg wind</span><strong>{formatNumber(analytics.averageWind, 0, ' km/s')}</strong><small>logged marks only</small></div>
+        <div><span>Common X-ray</span><strong>{analytics.commonXrayClass}</strong><small>logged marks only</small></div>
+      </div>
 
-        <div className="analytics-grid secondary">
-          <div><span>First mark</span><strong>{formatDate(analytics.oldest?.time)}</strong></div>
-          <div><span>Latest mark</span><strong>{formatDate(analytics.newest?.time)}</strong></div>
-          <div><span>Stations used</span><strong>{analytics.stationCount || '—'}</strong></div>
-          <div><span>Highest Kp</span><strong>{analytics.highestKp ? formatNumber(analytics.highestKp.value, 1) : '—'}</strong></div>
-        </div>
+      <div className="analytics-grid secondary">
+        <div><span>First mark</span><strong>{formatDate(analytics.oldest?.time)}</strong></div>
+        <div><span>Latest mark</span><strong>{formatDate(analytics.newest?.time)}</strong></div>
+        <div><span>Stations used</span><strong>{analytics.stationCount || '—'}</strong></div>
+        <div><span>Highest Kp</span><strong>{analytics.highestKp ? formatNumber(analytics.highestKp.value, 1) : '—'}</strong></div>
+      </div>
 
-        <div className="trend-grid">
-          <MiniObservationTrend entries={observations} field="kp" label="Kp trend" />
-          <MiniObservationTrend entries={observations} field="solarWindKmS" label="Wind trend" suffix=" km/s" />
-          <MiniObservationTrend entries={observations} field="xrayFlux" label="X-ray flux trend" suffix=" W/m²" />
-        </div>
+      <div className="trend-grid">
+        <MiniObservationTrend entries={observations} field="kp" label="Kp trend" />
+        <MiniObservationTrend entries={observations} field="solarWindKmS" label="Wind trend" suffix=" km/s" />
+        <MiniObservationTrend entries={observations} field="xrayFlux" label="X-ray flux trend" suffix=" W/m²" />
+      </div>
 
-        <p className="note">
-          These summaries describe only the observations saved in this browser. They are review aids, not evidence that one signal caused another event.
-        </p>
-      </article>
-
-      <LocalWatchtower
-        data={{
-          kp: latestSnapshot.kp,
-          solarWindKmS: latestSnapshot.solarWindKmS,
-          xrayClass: latestSnapshot.xrayClass,
-          imageStatus: latestSnapshot.imageStatus || 'waiting',
-          feedStatus: latestSnapshot.status || 'waiting'
-        }}
-      />
-    </>
+      <p className="note">
+        These summaries describe only the observations saved in this browser. They are review aids, not evidence that one signal caused another event.
+      </p>
+    </article>
   );
 }
