@@ -18,7 +18,8 @@ const DEFAULTS = {
 
 const STORAGE_KEYS = {
   stationId: 'eirm.stationId',
-  customSpectrogramUrl: 'eirm.customSpectrogramUrl'
+  customSpectrogramUrl: 'eirm.customSpectrogramUrl',
+  observations: 'eirm.observations'
 };
 
 const STATION_PRESETS = [
@@ -147,6 +148,17 @@ function safeSetLocal(key, value) {
   }
 }
 
+function safeGetJson(key, fallback) {
+  try {
+    const value = window.localStorage.getItem(key);
+    if (!value) return fallback;
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function isHttpUrl(value) {
   if (!value) return false;
   try {
@@ -160,6 +172,23 @@ function isHttpUrl(value) {
 function getInitialStationId() {
   const saved = safeGetLocal(STORAGE_KEYS.stationId, 'env');
   return STATION_PRESETS.some((station) => station.id === saved) ? saved : 'env';
+}
+
+function csvCell(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function downloadText(filename, content, type = 'text/plain') {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function getJson(url, signal) {
@@ -324,6 +353,49 @@ function TimelineStrip({ entries }) {
   );
 }
 
+function ObservationLog({ note, setNote, observations, onAdd, onExport, onClear }) {
+  return (
+    <article className="panel observation-panel">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">observation log</p>
+          <h2>Local research notes</h2>
+        </div>
+        <span className="receipt-tag">local only · {observations.length} marks</span>
+      </div>
+      <p className="note">
+        Mark what you notice while EIRM stores the current dashboard snapshot. These are personal observations, not proof of causation.
+      </p>
+      <div className="observation-compose">
+        <label>
+          <span>note</span>
+          <input
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Example: bright band on spectrogram, app check, personal note…"
+          />
+        </label>
+        <button onClick={onAdd}>Mark observation</button>
+      </div>
+      <div className="observation-actions">
+        <button className="small-button" onClick={onExport} disabled={!observations.length}>Export CSV</button>
+        <button className="small-button danger" onClick={onClear} disabled={!observations.length}>Clear log</button>
+      </div>
+      <div className="observation-list">
+        {observations.length ? observations.slice(0, 6).map((entry) => (
+          <div className="observation-item" key={entry.id}>
+            <div>
+              <strong>{formatClock(entry.time)}</strong>
+              <small>{entry.note || 'No note'} · {entry.status} · {entry.schumannMode}</small>
+            </div>
+            <code>Kp {entry.kp ?? '—'} · X-ray {entry.xrayClass || '—'} · wind {entry.solarWindKmS ?? '—'} km/s</code>
+          </div>
+        )) : <div className="observation-empty">No observations yet. Mark one when something is worth saving.</div>}
+      </div>
+    </article>
+  );
+}
+
 function OperatorPanel({ diagnostics, onCopy, copyState }) {
   return (
     <article className="panel operator-panel">
@@ -355,6 +427,8 @@ export default function App() {
   const [imageStatus, setImageStatus] = useState('loading');
   const [imageErrors, setImageErrors] = useState(0);
   const [copyState, setCopyState] = useState('');
+  const [observationNote, setObservationNote] = useState('');
+  const [observations, setObservations] = useState(() => safeGetJson(STORAGE_KEYS.observations, []));
 
   const selectedStation = STATION_PRESETS.find((station) => station.id === stationId) || STATION_PRESETS[0];
   const trimmedCustomUrl = customSpectrogramUrl.trim();
@@ -415,6 +489,10 @@ export default function App() {
   }, [customSpectrogramUrl]);
 
   useEffect(() => {
+    safeSetLocal(STORAGE_KEYS.observations, JSON.stringify(observations));
+  }, [observations]);
+
+  useEffect(() => {
     setImageStatus('loading');
   }, [activeSpectrogramUrl, refreshKey]);
 
@@ -448,6 +526,48 @@ export default function App() {
       setCopyState('Copy failed');
     }
     window.setTimeout(() => setCopyState(''), 1600);
+  }
+
+  function addObservation() {
+    const entry = {
+      id: crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+      time: new Date().toISOString(),
+      note: observationNote.trim(),
+      status: state.status,
+      stationName: selectedStation.name,
+      activeSpectrogramUrl,
+      imageStatus,
+      schumannMode: state.schumann.measured ? 'measured JSON' : 'reference harmonics',
+      schumannStation: state.schumann.station,
+      sr1Hz: sr1?.frequencyHz ?? null,
+      kp: state.space.kp.current,
+      xrayClass: state.space.xray.classLabel,
+      xrayFlux: state.space.xray.flux,
+      solarWindKmS: state.space.wind.speed,
+      densityPcc: state.space.wind.density
+    };
+    setObservations((items) => [entry, ...items].slice(0, 100));
+    setObservationNote('');
+  }
+
+  function exportObservationsCsv() {
+    const headers = [
+      'time_utc', 'note', 'feed_status', 'station', 'visual_url', 'image_status', 'sr_mode_source',
+      'schumann_station', 'sr1_hz', 'kp', 'xray_class', 'xray_flux', 'solar_wind_km_s', 'density_pcc'
+    ];
+    const rows = observations.map((entry) => [
+      entry.time, entry.note, entry.status, entry.stationName, entry.activeSpectrogramUrl, entry.imageStatus,
+      entry.schumannMode, entry.schumannStation, entry.sr1Hz, entry.kp, entry.xrayClass, entry.xrayFlux,
+      entry.solarWindKmS, entry.densityPcc
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
+    downloadText(`eirm-observations-${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv');
+  }
+
+  function clearObservations() {
+    if (window.confirm('Clear local EIRM observations from this browser?')) {
+      setObservations([]);
+    }
   }
 
   return (
@@ -573,6 +693,15 @@ export default function App() {
         </article>
       </section>
 
+      <ObservationLog
+        note={observationNote}
+        setNote={setObservationNote}
+        observations={observations}
+        onAdd={addObservation}
+        onExport={exportObservationsCsv}
+        onClear={clearObservations}
+      />
+
       <section className="panel">
         <div className="panel-head">
           <div>
@@ -597,6 +726,7 @@ export default function App() {
             <li>Schumann spectrogram: visual monitoring source, configurable by environment variable or station selector.</li>
             <li>Schumann frequencies: reference harmonics unless a permitted JSON provider is connected.</li>
             <li>NOAA feeds: used only as contextual space-weather data.</li>
+            <li>Observation Log entries are local notes and are not proof of causation.</li>
             <li>No health, consciousness, earthquake, or personal-event causation claims are made.</li>
           </ul>
           <small>Last refresh: {formatClock(state.updatedAt)} · {formatClock(state.updatedAt, 'utc')}</small>
