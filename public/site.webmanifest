@@ -1,0 +1,18 @@
+{
+  "name": "EIRM · Earth-Ionosphere Resonance Monitor",
+  "short_name": "EIRM",
+  "description": "A claim-safe Schumann resonance and space-weather dashboard.",
+  "start_url": "/schumann-live-react/",
+  "scope": "/schumann-live-react/",
+  "display": "standalone",
+  "background_color": "#050715",
+  "theme_color": "#050715",
+  "icons": [
+    {
+      "src": "/schumann-live-react/eirm-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
