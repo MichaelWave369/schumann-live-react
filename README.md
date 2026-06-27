@@ -1,6 +1,6 @@
 # Schumann Live React
 
-A public MIT React dashboard for live / near-live Schumann resonance viewing with source boundaries, NOAA space-weather context, and a clean adapter for future measured Schumann APIs.
+A public MIT React + Vite dashboard for live / near-live Schumann resonance viewing with source boundaries, NOAA space-weather context, and a clean adapter for future measured Schumann APIs.
 
 ## What it shows
 
@@ -64,13 +64,6 @@ Then open the local Vite URL shown in your terminal.
 ```bash
 npm run build
 npm run preview
-```
-
-## Test
-
-```bash
-npm test
-npm run lint
 ```
 
 ## GitHub Pages
