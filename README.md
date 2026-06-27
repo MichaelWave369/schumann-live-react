@@ -13,6 +13,7 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 - Visual image health badge: loading, ready, or error.
 - Local Observation Log for timestamped research notes, CSV export, JSON export, and JSON import.
 - Observation Analytics for local summaries and trend review.
+- Local Watchtower for claim-safe threshold review of the latest saved observation snapshot.
 - Operator diagnostics panel with copyable runtime JSON.
 - Reference Schumann mode grid: SR1 through SR5.
 - Optional measured Schumann JSON mode provider.
@@ -32,7 +33,7 @@ This project is for educational monitoring and pattern-safe exploration. It does
 
 By default, the app treats Schumann frequencies as **reference harmonics** and the spectrogram as the visual receipt. Numeric Schumann mode measurements only switch to measured mode when you configure a permitted JSON provider with `VITE_SR_JSON_URL`.
 
-Observation Log entries are local user notes paired with the current dashboard snapshot. They are useful for personal review, debugging, or later analysis, but they are not evidence of causation by themselves. Observation Analytics summarize saved local marks only and are not causal analysis.
+Observation Log entries are local user notes paired with the current dashboard snapshot. They are useful for personal review, debugging, or later analysis, but they are not evidence of causation by themselves. Observation Analytics and Watchtower states summarize saved local marks only and are not causal analysis.
 
 ## Data sources
 
@@ -84,6 +85,18 @@ Observation Analytics summarizes only the local marks stored in the browser. It 
 - Small trend views for Kp, solar wind, and X-ray flux.
 
 These are review tools, not causal statistics.
+
+## Local Watchtower
+
+The Local Watchtower checks the latest saved observation snapshot against local browser thresholds for:
+
+- Kp watch / alert values.
+- Solar-wind watch / alert values.
+- GOES X-ray watch / alert class.
+- Spectrogram image load state.
+- Feed availability state.
+
+Rules are stored locally in the browser and can be adjusted or reset. Watchtower states are dashboard awareness markers only; they are not predictions, diagnoses, or causal claims.
 
 ## Operator diagnostics
 
