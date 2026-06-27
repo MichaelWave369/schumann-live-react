@@ -65,6 +65,27 @@ function readFirstNumber(row, keys) {
   return null;
 }
 
+function formatClock(value, mode = 'local') {
+  if (!value) return 'not yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'not yet';
+  return mode === 'utc'
+    ? date.toLocaleString(undefined, { timeZone: 'UTC', hour12: false }) + ' UTC'
+    : date.toLocaleString();
+}
+
+function minutesAgo(value) {
+  if (!value) return 'waiting';
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return 'waiting';
+  const diff = Math.max(0, Date.now() - then);
+  const minutes = Math.round(diff / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
+}
+
 function xrayClass(flux) {
   if (!Number.isFinite(flux) || flux <= 0) return '—';
   if (flux >= 1e-4) return `X${(flux / 1e-4).toFixed(1)}`;
@@ -72,6 +93,13 @@ function xrayClass(flux) {
   if (flux >= 1e-6) return `C${(flux / 1e-6).toFixed(1)}`;
   if (flux >= 1e-7) return `B${(flux / 1e-7).toFixed(1)}`;
   return `A${(flux / 1e-8).toFixed(1)}`;
+}
+
+function kpTone(value) {
+  if (!Number.isFinite(value)) return 'waiting';
+  if (value >= 7) return 'storm';
+  if (value >= 5) return 'active';
+  return 'quiet';
 }
 
 async function getJson(url, signal) {
@@ -168,13 +196,22 @@ function MiniLine({ points }) {
   );
 }
 
-function Stat({ label, value, detail }) {
+function Stat({ label, value, detail, tone }) {
   return (
-    <article className="stat">
+    <article className={`stat ${tone || ''}`}>
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{detail}</small>
     </article>
+  );
+}
+
+function SourceRow({ label, value }) {
+  return (
+    <div className="source-row">
+      <span>{label}</span>
+      <code>{value}</code>
+    </div>
   );
 }
 
@@ -223,25 +260,44 @@ export default function App() {
 
   const spectrogramUrl = `${DEFAULTS.spectrogram}${DEFAULTS.spectrogram.includes('?') ? '&' : '?'}t=${refreshKey}`;
   const sr1 = state.schumann.modes[0];
+  const kpStatus = kpTone(state.space.kp.current);
+  const refreshAge = minutesAgo(state.updatedAt);
 
   return (
     <main className="shell">
-      <section className="hero">
-        <p className="eyebrow">Schumann Live React · MIT public dashboard</p>
-        <h1>Earth-ionosphere resonance monitor</h1>
-        <p>
-          A claim-safe live viewer for Schumann spectrograms, reference harmonics, optional measured-mode JSON, and NOAA
-          space-weather context.
-        </p>
-        <div className="actions">
-          <span className={`pill ${state.status}`}>{busy ? 'refreshing' : state.status}</span>
-          <button onClick={refresh} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh feeds'}</button>
+      <section className="hero compact-hero">
+        <div className="hero-copy">
+          <p className="eyebrow">Schumann Live React · MIT public dashboard</p>
+          <h1>EIRM</h1>
+          <p className="subtitle">Earth-Ionosphere Resonance Monitor</p>
+          <p>
+            A claim-safe live viewer for Schumann spectrograms, reference harmonics, optional measured-mode JSON, and NOAA
+            space-weather context.
+          </p>
+          <div className="actions">
+            <span className={`pill ${state.status}`}>{busy ? 'refreshing' : state.status}</span>
+            <button onClick={refresh} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh feeds'}</button>
+          </div>
         </div>
+        <aside className="hero-console" aria-label="feed status console">
+          <div>
+            <span>last refresh</span>
+            <strong>{refreshAge}</strong>
+          </div>
+          <div>
+            <span>local time</span>
+            <strong>{formatClock(state.updatedAt)}</strong>
+          </div>
+          <div>
+            <span>utc receipt</span>
+            <strong>{formatClock(state.updatedAt, 'utc')}</strong>
+          </div>
+        </aside>
       </section>
 
       <section className="stats">
         <Stat label="SR1" value={fmt(sr1?.frequencyHz, 2, ' Hz')} detail={state.schumann.measured ? 'measured JSON provider' : 'reference harmonic'} />
-        <Stat label="Kp index" value={fmt(state.space.kp.current, 1)} detail={`24h max ${fmt(state.space.kp.max24h, 1)}`} />
+        <Stat label="Kp index" value={fmt(state.space.kp.current, 1)} detail={`24h max ${fmt(state.space.kp.max24h, 1)} · ${kpStatus}`} tone={kpStatus} />
         <Stat label="GOES X-ray" value={state.space.xray.classLabel} detail={fmt(state.space.xray.flux, 8, ' W/m²')} />
         <Stat label="Solar wind" value={fmt(state.space.wind.speed, 0, ' km/s')} detail={`${fmt(state.space.wind.density, 1, ' p/cc')} density`} />
       </section>
@@ -282,8 +338,13 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <p className="eyebrow">NOAA context</p>
-        <h2>Space-weather stats</h2>
+        <div className="panel-head">
+          <div>
+            <p className="eyebrow">NOAA context</p>
+            <h2>Space-weather stats</h2>
+          </div>
+          <span className="receipt-tag">auto-refresh · 5 min</span>
+        </div>
         <div className="grid three">
           <div className="chart"><h3>Planetary Kp</h3><MiniLine points={state.space.kp.points} /></div>
           <div className="chart"><h3>GOES X-ray flux</h3><MiniLine points={state.space.xray.points} /></div>
@@ -291,17 +352,29 @@ export default function App() {
         </div>
       </section>
 
-      <section className="panel ledger">
-        <p className="eyebrow">source ledger</p>
-        <h2>Claim boundary</h2>
-        <p>{state.message}</p>
-        <ul>
-          <li>Schumann spectrogram: visual monitoring source, configurable by environment variable.</li>
-          <li>Schumann frequencies: reference harmonics unless a permitted JSON provider is connected.</li>
-          <li>NOAA feeds: used only as contextual space-weather data.</li>
-          <li>No health, consciousness, earthquake, or personal-event causation claims are made.</li>
-        </ul>
-        <small>Last refresh: {state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'not yet'}</small>
+      <section className="grid two bottom-grid">
+        <article className="panel ledger">
+          <p className="eyebrow">source ledger</p>
+          <h2>Claim boundary</h2>
+          <p>{state.message}</p>
+          <ul>
+            <li>Schumann spectrogram: visual monitoring source, configurable by environment variable.</li>
+            <li>Schumann frequencies: reference harmonics unless a permitted JSON provider is connected.</li>
+            <li>NOAA feeds: used only as contextual space-weather data.</li>
+            <li>No health, consciousness, earthquake, or personal-event causation claims are made.</li>
+          </ul>
+          <small>Last refresh: {formatClock(state.updatedAt)} · {formatClock(state.updatedAt, 'utc')}</small>
+        </article>
+
+        <article className="panel sources">
+          <p className="eyebrow">configured feeds</p>
+          <h2>Source map</h2>
+          <SourceRow label="Spectrogram" value={DEFAULTS.spectrogram} />
+          <SourceRow label="Schumann JSON" value={DEFAULTS.schumannJson || 'not configured'} />
+          <SourceRow label="Kp" value={DEFAULTS.kp} />
+          <SourceRow label="X-ray" value={DEFAULTS.xray} />
+          <SourceRow label="Solar wind" value={DEFAULTS.wind} />
+        </article>
       </section>
     </main>
   );
