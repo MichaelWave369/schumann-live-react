@@ -7,6 +7,7 @@ import './observations.css';
 import './analytics.css';
 import './watchtower.css';
 import './snapshotReceipt.css';
+import './receiptVerifier.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
