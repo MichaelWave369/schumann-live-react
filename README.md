@@ -11,6 +11,7 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 - Station/source selector with configured source, Tomsk visual feed preset, and custom permitted image URL mode.
 - Persistent station/custom source preferences in local browser storage.
 - Visual image health badge: loading, ready, or error.
+- Local Observation Log for timestamped research notes and CSV export.
 - Operator diagnostics panel with copyable runtime JSON.
 - Reference Schumann mode grid: SR1 through SR5.
 - Optional measured Schumann JSON mode provider.
@@ -29,6 +30,8 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 This project is for educational monitoring and pattern-safe exploration. It does **not** claim that Schumann resonance readings cause health symptoms, mood changes, spiritual states, earthquakes, or personal events.
 
 By default, the app treats Schumann frequencies as **reference harmonics** and the spectrogram as the visual receipt. Numeric Schumann mode measurements only switch to measured mode when you configure a permitted JSON provider with `VITE_SR_JSON_URL`.
+
+Observation Log entries are local user notes paired with the current dashboard snapshot. They are useful for personal review, debugging, or later analysis, but they are not evidence of causation by themselves.
 
 ## Data sources
 
@@ -51,6 +54,21 @@ The visual station selector currently includes:
 - **Custom image URL**: a runtime input for any permitted spectrogram image URL.
 
 The selector changes the visual spectrogram only. Reference harmonics and optional measured JSON remain governed separately so the dashboard does not mix image receipts with numerical measurement claims.
+
+## Observation Log
+
+The local Observation Log lets a user mark a moment and save:
+
+- UTC timestamp.
+- Freeform note.
+- Current feed status.
+- Active visual spectrogram source.
+- Image health state.
+- Schumann source mode: reference harmonics or measured JSON.
+- SR1 reference/measurement value.
+- Kp, GOES X-ray class/flux, solar-wind speed, and density.
+
+Entries are stored only in the browser local storage and can be exported as CSV. Clearing the log removes local entries from that browser.
 
 ## Operator diagnostics
 
