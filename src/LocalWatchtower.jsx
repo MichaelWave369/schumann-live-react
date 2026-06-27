@@ -64,6 +64,23 @@ function formatValue(value, suffix = '') {
   return number === null ? '—' : `${number.toFixed(0)}${suffix}`;
 }
 
+function fallbackHash(text) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return `fallback-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+async function hashSnapshot(snapshot) {
+  const text = JSON.stringify(snapshot);
+  if (!window.crypto?.subtle) return fallbackHash(text);
+  const bytes = new TextEncoder().encode(text);
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function buildSnapshot(data, states, rules) {
   return {
     app: 'EIRM',
@@ -83,12 +100,13 @@ function buildSnapshot(data, states, rules) {
   };
 }
 
-function buildMarkdownReport(snapshot) {
+function buildMarkdownReport(snapshot, receiptId) {
   const values = snapshot.values;
   return [
     '# EIRM Current Snapshot Report',
     '',
     `Generated UTC: ${snapshot.generatedAt}`,
+    `Receipt ID: ${receiptId || 'pending'}`,
     `Overall state: ${snapshot.overallState}`,
     '',
     '## Current values',
@@ -150,6 +168,7 @@ function WatchItem({ label, state, value, detail }) {
 export default function LocalWatchtower({ data }) {
   const [rules, setRules] = useState(safeGetRules);
   const [copyState, setCopyState] = useState('');
+  const [receiptId, setReceiptId] = useState('');
 
   useEffect(() => {
     safeSaveRules(rules);
@@ -173,6 +192,15 @@ export default function LocalWatchtower({ data }) {
 
   const snapshot = useMemo(() => buildSnapshot(data, states, rules), [data, rules, states]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setReceiptId('');
+    hashSnapshot(snapshot).then((hash) => {
+      if (!cancelled) setReceiptId(hash);
+    });
+    return () => { cancelled = true; };
+  }, [snapshot]);
+
   function update(key, value) {
     setRules((current) => ({ ...current, [key]: value }));
   }
@@ -183,7 +211,7 @@ export default function LocalWatchtower({ data }) {
 
   async function copyMarkdownReport() {
     try {
-      await navigator.clipboard.writeText(buildMarkdownReport(snapshot));
+      await navigator.clipboard.writeText(buildMarkdownReport(snapshot, receiptId));
       setCopyState('Copied');
     } catch {
       setCopyState('Copy failed');
@@ -192,7 +220,7 @@ export default function LocalWatchtower({ data }) {
   }
 
   function exportSnapshotJson() {
-    downloadJson(`eirm-current-snapshot-${new Date().toISOString().slice(0, 10)}.json`, snapshot);
+    downloadJson(`eirm-current-snapshot-${new Date().toISOString().slice(0, 10)}.json`, { ...snapshot, receiptId: receiptId || 'pending' });
   }
 
   return (
@@ -222,6 +250,10 @@ export default function LocalWatchtower({ data }) {
           <p className="eyebrow">current snapshot report</p>
           <h3>Shareable status summary</h3>
           <p>Copy a Markdown report or export the current Watchtower snapshot as JSON. This is a status receipt, not proof of causation.</p>
+          <div className="receipt-id">
+            <span>receipt id</span>
+            <code>{receiptId ? `${receiptId.slice(0, 24)}…` : 'hashing…'}</code>
+          </div>
         </div>
         <div className="snapshot-actions">
           <button className="small-button" onClick={copyMarkdownReport}>{copyState || 'Copy Markdown'}</button>
