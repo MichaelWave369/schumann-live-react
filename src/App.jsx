@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import ObservationAnalytics from './ObservationAnalytics.jsx';
 
 const HARMONICS = [
   { mode: 'SR1', hz: 7.83, note: 'fundamental reference' },
@@ -353,7 +354,7 @@ function TimelineStrip({ entries }) {
   );
 }
 
-function ObservationLog({ note, setNote, observations, onAdd, onExport, onClear }) {
+function ObservationLog({ note, setNote, observations, onAdd, onExport, onExportJson, onImportJson, onClear }) {
   return (
     <article className="panel observation-panel">
       <div className="panel-head">
@@ -379,6 +380,11 @@ function ObservationLog({ note, setNote, observations, onAdd, onExport, onClear 
       </div>
       <div className="observation-actions">
         <button className="small-button" onClick={onExport} disabled={!observations.length}>Export CSV</button>
+        <button className="small-button" onClick={onExportJson} disabled={!observations.length}>Export JSON</button>
+        <label className="file-button small-button">
+          Import JSON
+          <input type="file" accept="application/json" onChange={onImportJson} />
+        </label>
         <button className="small-button danger" onClick={onClear} disabled={!observations.length}>Clear log</button>
       </div>
       <div className="observation-list">
@@ -564,6 +570,47 @@ export default function App() {
     downloadText(`eirm-observations-${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv');
   }
 
+  function exportObservationsJson() {
+    const payload = {
+      app: 'EIRM',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      claimBoundary: 'Observation entries are local notes and are not proof of causation.',
+      observations
+    };
+    downloadText(`eirm-observations-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload, null, 2), 'application/json');
+  }
+
+  function importObservationsJson(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || ''));
+        const incoming = Array.isArray(parsed) ? parsed : Array.isArray(parsed.observations) ? parsed.observations : [];
+        const normalized = incoming
+          .filter((entry) => entry && typeof entry === 'object' && entry.time)
+          .map((entry) => ({ ...entry, id: entry.id || `${entry.time}-${Math.random()}` }));
+
+        setObservations((items) => {
+          const byId = new Map();
+          [...normalized, ...items].forEach((entry) => byId.set(entry.id, entry));
+          return [...byId.values()]
+            .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+            .slice(0, 100);
+        });
+      } catch {
+        window.alert('Could not import that EIRM observation JSON file.');
+      } finally {
+        input.value = '';
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function clearObservations() {
     if (window.confirm('Clear local EIRM observations from this browser?')) {
       setObservations([]);
@@ -699,8 +746,12 @@ export default function App() {
         observations={observations}
         onAdd={addObservation}
         onExport={exportObservationsCsv}
+        onExportJson={exportObservationsJson}
+        onImportJson={importObservationsJson}
         onClear={clearObservations}
       />
+
+      <ObservationAnalytics observations={observations} />
 
       <section className="panel">
         <div className="panel-head">
@@ -727,6 +778,7 @@ export default function App() {
             <li>Schumann frequencies: reference harmonics unless a permitted JSON provider is connected.</li>
             <li>NOAA feeds: used only as contextual space-weather data.</li>
             <li>Observation Log entries are local notes and are not proof of causation.</li>
+            <li>Observation Analytics summarize saved local marks only and are not causal analysis.</li>
             <li>No health, consciousness, earthquake, or personal-event causation claims are made.</li>
           </ul>
           <small>Last refresh: {formatClock(state.updatedAt)} · {formatClock(state.updatedAt, 'utc')}</small>
