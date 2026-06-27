@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import LocalWatchtower from './LocalWatchtower.jsx';
 import ObservationAnalytics from './ObservationAnalytics.jsx';
 
 const HARMONICS = [
@@ -507,6 +508,14 @@ export default function App() {
   const kpStatus = kpTone(state.space.kp.current);
   const refreshAge = minutesAgo(state.updatedAt);
 
+  const currentWatchData = useMemo(() => ({
+    kp: state.space.kp.current,
+    solarWindKmS: state.space.wind.speed,
+    xrayClass: state.space.xray.classLabel,
+    imageStatus,
+    feedStatus: state.status
+  }), [imageStatus, state.space.kp.current, state.space.wind.speed, state.space.xray.classLabel, state.status]);
+
   const diagnostics = useMemo(() => ({
     app: 'EIRM',
     status: state.status,
@@ -665,6 +674,8 @@ export default function App() {
         <Stat label="Solar wind" value={fmt(state.space.wind.speed, 0, ' km/s')} detail={`${fmt(state.space.wind.density, 1, ' p/cc')} density`} confidence="NOAA" />
       </section>
 
+      <LocalWatchtower data={currentWatchData} />
+
       <section className="grid two">
         <article className="panel spectrogram">
           <div className="panel-head">
@@ -777,6 +788,7 @@ export default function App() {
             <li>Schumann spectrogram: visual monitoring source, configurable by environment variable or station selector.</li>
             <li>Schumann frequencies: reference harmonics unless a permitted JSON provider is connected.</li>
             <li>NOAA feeds: used only as contextual space-weather data.</li>
+            <li>Live Watchtower states are local threshold checks, not predictions or causal claims.</li>
             <li>Observation Log entries are local notes and are not proof of causation.</li>
             <li>Observation Analytics summarize saved local marks only and are not causal analysis.</li>
             <li>No health, consciousness, earthquake, or personal-event causation claims are made.</li>
