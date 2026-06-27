@@ -16,6 +16,11 @@ const DEFAULTS = {
   wind: import.meta.env.VITE_NOAA_WIND_URL || 'https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json'
 };
 
+const STORAGE_KEYS = {
+  stationId: 'eirm.stationId',
+  customSpectrogramUrl: 'eirm.customSpectrogramUrl'
+};
+
 const STATION_PRESETS = [
   {
     id: 'env',
@@ -124,6 +129,37 @@ function kpTone(value) {
   if (value >= 7) return 'storm';
   if (value >= 5) return 'active';
   return 'quiet';
+}
+
+function safeGetLocal(key, fallback) {
+  try {
+    return window.localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeSetLocal(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage can be blocked in private or hardened browser modes.
+  }
+}
+
+function isHttpUrl(value) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function getInitialStationId() {
+  const saved = safeGetLocal(STORAGE_KEYS.stationId, 'env');
+  return STATION_PRESETS.some((station) => station.id === saved) ? saved : 'env';
 }
 
 async function getJson(url, signal) {
@@ -288,16 +324,42 @@ function TimelineStrip({ entries }) {
   );
 }
 
+function OperatorPanel({ diagnostics, onCopy, copyState }) {
+  return (
+    <article className="panel operator-panel">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">operator panel</p>
+          <h2>Runtime diagnostics</h2>
+        </div>
+        <button className="small-button" onClick={onCopy}>{copyState || 'Copy diagnostics'}</button>
+      </div>
+      <div className="operator-grid">
+        <div><span>Visual image</span><strong>{diagnostics.imageStatus}</strong></div>
+        <div><span>Feed status</span><strong>{diagnostics.status}</strong></div>
+        <div><span>SR mode source</span><strong>{diagnostics.schumannMode}</strong></div>
+        <div><span>Visual failures</span><strong>{diagnostics.imageErrors}</strong></div>
+      </div>
+      <pre>{JSON.stringify(diagnostics, null, 2)}</pre>
+    </article>
+  );
+}
+
 export default function App() {
   const [state, setState] = useState(initialState);
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [busy, setBusy] = useState(false);
-  const [stationId, setStationId] = useState('env');
-  const [customSpectrogramUrl, setCustomSpectrogramUrl] = useState('');
+  const [stationId, setStationId] = useState(getInitialStationId);
+  const [customSpectrogramUrl, setCustomSpectrogramUrl] = useState(() => safeGetLocal(STORAGE_KEYS.customSpectrogramUrl, ''));
   const [refreshHistory, setRefreshHistory] = useState([]);
+  const [imageStatus, setImageStatus] = useState('loading');
+  const [imageErrors, setImageErrors] = useState(0);
+  const [copyState, setCopyState] = useState('');
 
   const selectedStation = STATION_PRESETS.find((station) => station.id === stationId) || STATION_PRESETS[0];
-  const activeSpectrogramUrl = stationId === 'custom' ? customSpectrogramUrl.trim() || DEFAULTS.spectrogram : selectedStation.url;
+  const trimmedCustomUrl = customSpectrogramUrl.trim();
+  const customUrlValid = stationId !== 'custom' || trimmedCustomUrl === '' || isHttpUrl(trimmedCustomUrl);
+  const activeSpectrogramUrl = stationId === 'custom' && isHttpUrl(trimmedCustomUrl) ? trimmedCustomUrl : selectedStation.url || DEFAULTS.spectrogram;
 
   const refresh = useCallback(async () => {
     const controller = new AbortController();
@@ -343,13 +405,50 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
+    safeSetLocal(STORAGE_KEYS.stationId, stationId);
     setRefreshKey(Date.now());
-  }, [stationId, customSpectrogramUrl]);
+  }, [stationId]);
+
+  useEffect(() => {
+    safeSetLocal(STORAGE_KEYS.customSpectrogramUrl, customSpectrogramUrl);
+    setRefreshKey(Date.now());
+  }, [customSpectrogramUrl]);
+
+  useEffect(() => {
+    setImageStatus('loading');
+  }, [activeSpectrogramUrl, refreshKey]);
 
   const spectrogramUrl = `${activeSpectrogramUrl}${activeSpectrogramUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
   const sr1 = state.schumann.modes[0];
   const kpStatus = kpTone(state.space.kp.current);
   const refreshAge = minutesAgo(state.updatedAt);
+
+  const diagnostics = useMemo(() => ({
+    app: 'EIRM',
+    status: state.status,
+    lastRefreshLocal: formatClock(state.updatedAt),
+    lastRefreshUtc: formatClock(state.updatedAt, 'utc'),
+    stationId,
+    stationName: selectedStation.name,
+    activeSpectrogramUrl,
+    imageStatus,
+    imageErrors,
+    schumannMode: state.schumann.measured ? 'measured JSON' : 'reference harmonics',
+    schumannStation: state.schumann.station,
+    kp: state.space.kp.current,
+    xrayClass: state.space.xray.classLabel,
+    solarWindKmS: state.space.wind.speed
+  }), [activeSpectrogramUrl, imageErrors, imageStatus, selectedStation.name, state, stationId]);
+
+  async function copyDiagnostics() {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
+      setCopyState('Copied');
+    } catch {
+      setCopyState('Copy failed');
+    }
+    window.setTimeout(() => setCopyState(''), 1600);
+  }
 
   return (
     <main className="shell">
@@ -431,11 +530,23 @@ export default function App() {
                   placeholder="https://example.org/schumann-image.jpg"
                   inputMode="url"
                 />
+                {!customUrlValid ? <small className="input-warning">Enter a valid http or https image URL. Using the fallback visual feed until then.</small> : null}
               </label>
             ) : null}
           </div>
 
-          <img src={spectrogramUrl} alt="Live or near-live Schumann resonance spectrogram" />
+          <div className={`image-shell ${imageStatus}`}>
+            <span className={`image-status ${imageStatus}`}>{imageStatus}</span>
+            <img
+              src={spectrogramUrl}
+              alt="Live or near-live Schumann resonance spectrogram"
+              onLoad={() => setImageStatus('ready')}
+              onError={() => {
+                setImageStatus('error');
+                setImageErrors((count) => count + 1);
+              }}
+            />
+          </div>
           <TimelineStrip entries={refreshHistory} />
           <p className="note">
             The image source is treated as near-live unless the provider documents exact cadence. Numeric mode values remain
@@ -501,6 +612,8 @@ export default function App() {
           <SourceRow label="Solar wind" value={DEFAULTS.wind} />
         </article>
       </section>
+
+      <OperatorPanel diagnostics={diagnostics} onCopy={copyDiagnostics} copyState={copyState} />
     </main>
   );
 }
