@@ -74,6 +74,37 @@
 .watch-item.alert strong { color: var(--red); }
 .watch-item.waiting strong { color: var(--cyan); }
 
+.snapshot-report {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(34, 211, 238, 0.07);
+}
+
+.snapshot-report h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+}
+
+.snapshot-report p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.snapshot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
 .watch-settings {
   margin-top: 1rem;
   border: 1px solid rgba(255,255,255,0.1);
@@ -137,14 +168,20 @@
 
 @media (max-width: 820px) {
   .watch-grid,
-  .watch-settings-grid {
+  .watch-settings-grid,
+  .snapshot-report {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 560px) {
   .watch-grid,
-  .watch-settings-grid {
+  .watch-settings-grid,
+  .snapshot-report {
     grid-template-columns: 1fr;
+  }
+
+  .snapshot-actions {
+    justify-content: flex-start;
   }
 }
