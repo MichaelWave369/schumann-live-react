@@ -16,6 +16,30 @@ const DEFAULTS = {
   wind: import.meta.env.VITE_NOAA_WIND_URL || 'https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json'
 };
 
+const STATION_PRESETS = [
+  {
+    id: 'env',
+    name: 'Configured source',
+    location: 'Environment default',
+    url: DEFAULTS.spectrogram,
+    confidence: 'visual'
+  },
+  {
+    id: 'tomsk',
+    name: 'Tomsk visual feed',
+    location: 'Public visual spectrogram',
+    url: 'https://schumannresonance.today/live/tomsk1.jpg',
+    confidence: 'visual'
+  },
+  {
+    id: 'custom',
+    name: 'Custom image URL',
+    location: 'Paste a permitted spectrogram image URL',
+    url: '',
+    confidence: 'visual'
+  }
+];
+
 const initialState = {
   status: 'loading',
   message: 'Connecting to public feeds…',
@@ -171,6 +195,24 @@ async function loadWind(signal) {
   };
 }
 
+function LogoMark() {
+  return (
+    <svg className="logo-mark" viewBox="0 0 120 120" role="img" aria-label="EIRM logo mark">
+      <defs>
+        <linearGradient id="ringGradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#22d3ee" />
+          <stop offset="100%" stopColor="#a78bfa" />
+        </linearGradient>
+      </defs>
+      <circle className="logo-earth" cx="60" cy="60" r="18" />
+      <ellipse className="logo-ring ring-a" cx="60" cy="60" rx="44" ry="18" />
+      <ellipse className="logo-ring ring-b" cx="60" cy="60" rx="44" ry="18" transform="rotate(62 60 60)" />
+      <ellipse className="logo-ring ring-c" cx="60" cy="60" rx="44" ry="18" transform="rotate(-62 60 60)" />
+      <path className="logo-wave" d="M18 82 C30 68, 42 96, 54 82 S78 68, 90 82 S108 96, 116 82" />
+    </svg>
+  );
+}
+
 function MiniLine({ points }) {
   const path = useMemo(() => {
     const values = points.slice(-80).map((point) => point.value).filter((value) => Number.isFinite(value));
@@ -196,14 +238,21 @@ function MiniLine({ points }) {
   );
 }
 
-function Stat({ label, value, detail, tone }) {
+function Stat({ label, value, detail, tone, confidence }) {
   return (
     <article className={`stat ${tone || ''}`}>
-      <span>{label}</span>
+      <div className="stat-top">
+        <span>{label}</span>
+        {confidence ? <ConfidenceBadge label={confidence} /> : null}
+      </div>
       <strong>{value}</strong>
       <small>{detail}</small>
     </article>
   );
+}
+
+function ConfidenceBadge({ label }) {
+  return <em className={`confidence confidence-${String(label).toLowerCase()}`}>{label}</em>;
 }
 
 function SourceRow({ label, value }) {
@@ -215,10 +264,40 @@ function SourceRow({ label, value }) {
   );
 }
 
+function TimelineStrip({ entries }) {
+  const display = entries.slice(-10);
+  return (
+    <div className="timeline-strip">
+      <div className="timeline-head">
+        <span>refresh timeline</span>
+        <small>last {display.length || 0} feed checks</small>
+      </div>
+      <div className="timeline-track" aria-label="recent refresh history">
+        {display.length ? (
+          display.map((entry, index) => (
+            <div className={`timeline-node ${entry.status}`} key={`${entry.time}-${index}`} title={`${entry.status} · ${formatClock(entry.time)}`}>
+              <i />
+              <small>{minutesAgo(entry.time)}</small>
+            </div>
+          ))
+        ) : (
+          <div className="timeline-empty">waiting for first refresh</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [state, setState] = useState(initialState);
   const [refreshKey, setRefreshKey] = useState(Date.now());
   const [busy, setBusy] = useState(false);
+  const [stationId, setStationId] = useState('env');
+  const [customSpectrogramUrl, setCustomSpectrogramUrl] = useState('');
+  const [refreshHistory, setRefreshHistory] = useState([]);
+
+  const selectedStation = STATION_PRESETS.find((station) => station.id === stationId) || STATION_PRESETS[0];
+  const activeSpectrogramUrl = stationId === 'custom' ? customSpectrogramUrl.trim() || DEFAULTS.spectrogram : selectedStation.url;
 
   const refresh = useCallback(async () => {
     const controller = new AbortController();
@@ -233,15 +312,18 @@ export default function App() {
     ]);
 
     const failures = settled.filter((result) => result.status === 'rejected').length;
+    const nextStatus = failures === 0 ? 'live' : failures < settled.length ? 'partial' : 'offline';
+    const now = new Date().toISOString();
+
     setState({
-      status: failures === 0 ? 'live' : failures < settled.length ? 'partial' : 'offline',
+      status: nextStatus,
       message:
         failures === 0
           ? 'Public feeds connected.'
           : failures < settled.length
             ? `${failures} feed${failures === 1 ? '' : 's'} unavailable; showing remaining data.`
             : 'Feeds unavailable; showing reference values only.',
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
       schumann: settled[0].status === 'fulfilled' ? settled[0].value : initialState.schumann,
       space: {
         kp: settled[1].status === 'fulfilled' ? settled[1].value : initialState.space.kp,
@@ -249,6 +331,8 @@ export default function App() {
         wind: settled[3].status === 'fulfilled' ? settled[3].value : initialState.space.wind
       }
     });
+
+    setRefreshHistory((history) => [...history.slice(-9), { time: now, status: nextStatus }]);
     setBusy(false);
   }, []);
 
@@ -258,7 +342,11 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [refresh]);
 
-  const spectrogramUrl = `${DEFAULTS.spectrogram}${DEFAULTS.spectrogram.includes('?') ? '&' : '?'}t=${refreshKey}`;
+  useEffect(() => {
+    setRefreshKey(Date.now());
+  }, [stationId, customSpectrogramUrl]);
+
+  const spectrogramUrl = `${activeSpectrogramUrl}${activeSpectrogramUrl.includes('?') ? '&' : '?'}t=${refreshKey}`;
   const sr1 = state.schumann.modes[0];
   const kpStatus = kpTone(state.space.kp.current);
   const refreshAge = minutesAgo(state.updatedAt);
@@ -267,7 +355,10 @@ export default function App() {
     <main className="shell">
       <section className="hero compact-hero">
         <div className="hero-copy">
-          <p className="eyebrow">Schumann Live React · MIT public dashboard</p>
+          <div className="brand-row">
+            <LogoMark />
+            <p className="eyebrow">Schumann Live React · MIT public dashboard</p>
+          </div>
           <h1>EIRM</h1>
           <p className="subtitle">Earth-Ionosphere Resonance Monitor</p>
           <p>
@@ -277,6 +368,12 @@ export default function App() {
           <div className="actions">
             <span className={`pill ${state.status}`}>{busy ? 'refreshing' : state.status}</span>
             <button onClick={refresh} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh feeds'}</button>
+          </div>
+          <div className="confidence-row" aria-label="data confidence badges">
+            <ConfidenceBadge label="visual" />
+            <ConfidenceBadge label={state.schumann.measured ? 'measured' : 'reference'} />
+            <ConfidenceBadge label="NOAA" />
+            <ConfidenceBadge label="ledger" />
           </div>
         </div>
         <aside className="hero-console" aria-label="feed status console">
@@ -296,10 +393,10 @@ export default function App() {
       </section>
 
       <section className="stats">
-        <Stat label="SR1" value={fmt(sr1?.frequencyHz, 2, ' Hz')} detail={state.schumann.measured ? 'measured JSON provider' : 'reference harmonic'} />
-        <Stat label="Kp index" value={fmt(state.space.kp.current, 1)} detail={`24h max ${fmt(state.space.kp.max24h, 1)} · ${kpStatus}`} tone={kpStatus} />
-        <Stat label="GOES X-ray" value={state.space.xray.classLabel} detail={fmt(state.space.xray.flux, 8, ' W/m²')} />
-        <Stat label="Solar wind" value={fmt(state.space.wind.speed, 0, ' km/s')} detail={`${fmt(state.space.wind.density, 1, ' p/cc')} density`} />
+        <Stat label="SR1" value={fmt(sr1?.frequencyHz, 2, ' Hz')} detail={state.schumann.measured ? 'measured JSON provider' : 'reference harmonic'} confidence={state.schumann.measured ? 'measured' : 'reference'} />
+        <Stat label="Kp index" value={fmt(state.space.kp.current, 1)} detail={`24h max ${fmt(state.space.kp.max24h, 1)} · ${kpStatus}`} tone={kpStatus} confidence="NOAA" />
+        <Stat label="GOES X-ray" value={state.space.xray.classLabel} detail={fmt(state.space.xray.flux, 8, ' W/m²')} confidence="NOAA" />
+        <Stat label="Solar wind" value={fmt(state.space.wind.speed, 0, ' km/s')} detail={`${fmt(state.space.wind.density, 1, ' p/cc')} density`} confidence="NOAA" />
       </section>
 
       <section className="grid two">
@@ -309,9 +406,37 @@ export default function App() {
               <p className="eyebrow">visual receipt</p>
               <h2>Schumann spectrogram</h2>
             </div>
-            <a href={DEFAULTS.spectrogram} target="_blank" rel="noreferrer">open source</a>
+            <a href={activeSpectrogramUrl} target="_blank" rel="noreferrer">open source</a>
           </div>
+
+          <div className="station-control">
+            <label>
+              <span>station / source</span>
+              <select value={stationId} onChange={(event) => setStationId(event.target.value)}>
+                {STATION_PRESETS.map((station) => (
+                  <option value={station.id} key={station.id}>{station.name}</option>
+                ))}
+              </select>
+            </label>
+            <div className="station-meta">
+              <ConfidenceBadge label={selectedStation.confidence} />
+              <small>{selectedStation.location}</small>
+            </div>
+            {stationId === 'custom' ? (
+              <label className="custom-source">
+                <span>custom image URL</span>
+                <input
+                  value={customSpectrogramUrl}
+                  onChange={(event) => setCustomSpectrogramUrl(event.target.value)}
+                  placeholder="https://example.org/schumann-image.jpg"
+                  inputMode="url"
+                />
+              </label>
+            ) : null}
+          </div>
+
           <img src={spectrogramUrl} alt="Live or near-live Schumann resonance spectrogram" />
+          <TimelineStrip entries={refreshHistory} />
           <p className="note">
             The image source is treated as near-live unless the provider documents exact cadence. Numeric mode values remain
             reference-only unless `VITE_SR_JSON_URL` is configured.
@@ -358,7 +483,7 @@ export default function App() {
           <h2>Claim boundary</h2>
           <p>{state.message}</p>
           <ul>
-            <li>Schumann spectrogram: visual monitoring source, configurable by environment variable.</li>
+            <li>Schumann spectrogram: visual monitoring source, configurable by environment variable or station selector.</li>
             <li>Schumann frequencies: reference harmonics unless a permitted JSON provider is connected.</li>
             <li>NOAA feeds: used only as contextual space-weather data.</li>
             <li>No health, consciousness, earthquake, or personal-event causation claims are made.</li>
@@ -369,7 +494,7 @@ export default function App() {
         <article className="panel sources">
           <p className="eyebrow">configured feeds</p>
           <h2>Source map</h2>
-          <SourceRow label="Spectrogram" value={DEFAULTS.spectrogram} />
+          <SourceRow label="Active visual" value={activeSpectrogramUrl} />
           <SourceRow label="Schumann JSON" value={DEFAULTS.schumannJson || 'not configured'} />
           <SourceRow label="Kp" value={DEFAULTS.kp} />
           <SourceRow label="X-ray" value={DEFAULTS.xray} />
