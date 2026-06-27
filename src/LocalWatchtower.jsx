@@ -64,6 +64,67 @@ function formatValue(value, suffix = '') {
   return number === null ? '—' : `${number.toFixed(0)}${suffix}`;
 }
 
+function buildSnapshot(data, states, rules) {
+  return {
+    app: 'EIRM',
+    report: 'Current Snapshot Report',
+    generatedAt: new Date().toISOString(),
+    overallState: states.overall,
+    values: {
+      kp: data.kp ?? null,
+      solarWindKmS: data.solarWindKmS ?? null,
+      xrayClass: data.xrayClass || '—',
+      imageStatus: data.imageStatus || 'waiting',
+      feedStatus: data.feedStatus || 'waiting'
+    },
+    states,
+    rules,
+    claimBoundary: 'Dashboard-awareness summary only. Not a prediction, diagnosis, or causal claim.'
+  };
+}
+
+function buildMarkdownReport(snapshot) {
+  const values = snapshot.values;
+  return [
+    '# EIRM Current Snapshot Report',
+    '',
+    `Generated UTC: ${snapshot.generatedAt}`,
+    `Overall state: ${snapshot.overallState}`,
+    '',
+    '## Current values',
+    '',
+    `- Kp: ${values.kp ?? '—'}`,
+    `- Solar wind: ${values.solarWindKmS ?? '—'} km/s`,
+    `- GOES X-ray class: ${values.xrayClass}`,
+    `- Spectrogram image: ${values.imageStatus}`,
+    `- Feed status: ${values.feedStatus}`,
+    '',
+    '## Watch states',
+    '',
+    `- Kp: ${snapshot.states.kp}`,
+    `- Solar wind: ${snapshot.states.wind}`,
+    `- X-ray: ${snapshot.states.xray}`,
+    `- Visual image: ${snapshot.states.visual}`,
+    `- Feeds: ${snapshot.states.feed}`,
+    '',
+    '## Claim boundary',
+    '',
+    snapshot.claimBoundary
+  ].join('\n');
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 function RuleInput({ label, value, onChange, suffix }) {
   return (
     <label className="watch-rule">
@@ -88,6 +149,7 @@ function WatchItem({ label, state, value, detail }) {
 
 export default function LocalWatchtower({ data }) {
   const [rules, setRules] = useState(safeGetRules);
+  const [copyState, setCopyState] = useState('');
 
   useEffect(() => {
     safeSaveRules(rules);
@@ -109,12 +171,28 @@ export default function LocalWatchtower({ data }) {
     return { kp, wind, xray, visual, feed, overall: strongest([kp, wind, xray, visual, feed]) };
   }, [data, rules]);
 
+  const snapshot = useMemo(() => buildSnapshot(data, states, rules), [data, rules, states]);
+
   function update(key, value) {
     setRules((current) => ({ ...current, [key]: value }));
   }
 
   function resetRules() {
     setRules(DEFAULT_RULES);
+  }
+
+  async function copyMarkdownReport() {
+    try {
+      await navigator.clipboard.writeText(buildMarkdownReport(snapshot));
+      setCopyState('Copied');
+    } catch {
+      setCopyState('Copy failed');
+    }
+    window.setTimeout(() => setCopyState(''), 1600);
+  }
+
+  function exportSnapshotJson() {
+    downloadJson(`eirm-current-snapshot-${new Date().toISOString().slice(0, 10)}.json`, snapshot);
   }
 
   return (
@@ -137,6 +215,18 @@ export default function LocalWatchtower({ data }) {
         <WatchItem label="X-ray class" state={states.xray} value={data.xrayClass || '—'} detail={`watch ≥ ${rules.xrayWatch} · alert ≥ ${rules.xrayAlert}`} />
         <WatchItem label="Visual image" state={states.visual} value={data.imageStatus || '—'} detail="image load health" />
         <WatchItem label="Feeds" state={states.feed} value={data.feedStatus || '—'} detail="live / partial / offline" />
+      </div>
+
+      <div className="snapshot-report">
+        <div>
+          <p className="eyebrow">current snapshot report</p>
+          <h3>Shareable status summary</h3>
+          <p>Copy a Markdown report or export the current Watchtower snapshot as JSON. This is a status receipt, not proof of causation.</p>
+        </div>
+        <div className="snapshot-actions">
+          <button className="small-button" onClick={copyMarkdownReport}>{copyState || 'Copy Markdown'}</button>
+          <button className="small-button" onClick={exportSnapshotJson}>Export JSON</button>
+        </div>
       </div>
 
       <details className="watch-settings">
