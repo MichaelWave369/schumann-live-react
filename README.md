@@ -11,7 +11,8 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 - Station/source selector with configured source, Tomsk visual feed preset, and custom permitted image URL mode.
 - Persistent station/custom source preferences in local browser storage.
 - Visual image health badge: loading, ready, or error.
-- Local Observation Log for timestamped research notes and CSV export.
+- Local Observation Log for timestamped research notes, CSV export, JSON export, and JSON import.
+- Observation Analytics for local summaries and trend review.
 - Operator diagnostics panel with copyable runtime JSON.
 - Reference Schumann mode grid: SR1 through SR5.
 - Optional measured Schumann JSON mode provider.
@@ -31,7 +32,7 @@ This project is for educational monitoring and pattern-safe exploration. It does
 
 By default, the app treats Schumann frequencies as **reference harmonics** and the spectrogram as the visual receipt. Numeric Schumann mode measurements only switch to measured mode when you configure a permitted JSON provider with `VITE_SR_JSON_URL`.
 
-Observation Log entries are local user notes paired with the current dashboard snapshot. They are useful for personal review, debugging, or later analysis, but they are not evidence of causation by themselves.
+Observation Log entries are local user notes paired with the current dashboard snapshot. They are useful for personal review, debugging, or later analysis, but they are not evidence of causation by themselves. Observation Analytics summarize saved local marks only and are not causal analysis.
 
 ## Data sources
 
@@ -68,7 +69,21 @@ The local Observation Log lets a user mark a moment and save:
 - SR1 reference/measurement value.
 - Kp, GOES X-ray class/flux, solar-wind speed, and density.
 
-Entries are stored only in the browser local storage and can be exported as CSV. Clearing the log removes local entries from that browser.
+Entries are stored only in the browser local storage and can be exported as CSV or JSON. JSON import can restore or merge a previous EIRM observation backup. Clearing the log removes local entries from that browser.
+
+## Observation Analytics
+
+Observation Analytics summarizes only the local marks stored in the browser. It currently shows:
+
+- Total marks.
+- Average Kp across saved marks.
+- Average solar-wind speed across saved marks.
+- Most common GOES X-ray class in saved marks.
+- First/latest mark time.
+- Station count and highest logged Kp.
+- Small trend views for Kp, solar wind, and X-ray flux.
+
+These are review tools, not causal statistics.
 
 ## Operator diagnostics
 
