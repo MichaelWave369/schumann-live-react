@@ -1,0 +1,94 @@
+.observation-analytics {
+  background: linear-gradient(135deg, rgba(15,23,42,0.84), rgba(49,46,129,0.45));
+}
+
+.analytics-grid,
+.trend-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.analytics-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-grid.secondary {
+  margin-top: 0.75rem;
+}
+
+.analytics-grid div,
+.observation-trend {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 1rem;
+  padding: 0.9rem;
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.analytics-grid span,
+.observation-trend span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.analytics-grid strong,
+.observation-trend strong {
+  display: block;
+  margin: 0.4rem 0;
+  color: var(--cyan);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.analytics-grid small {
+  color: var(--muted);
+}
+
+.trend-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.75rem;
+}
+
+.observation-trend div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.observation-trend svg {
+  width: 100%;
+  height: 96px;
+  margin-top: 0.65rem;
+}
+
+.observation-trend path {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 2.4;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 8px rgba(34,211,238,0.45));
+}
+
+.observation-trend.empty {
+  display: grid;
+  align-content: center;
+  min-height: 138px;
+}
+
+@media (max-width: 980px) {
+  .analytics-grid,
+  .trend-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .analytics-grid,
+  .trend-grid {
+    grid-template-columns: 1fr;
+  }
+}
