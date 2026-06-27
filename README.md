@@ -1,16 +1,19 @@
-# Schumann Live React
+# EIRM · Earth-Ionosphere Resonance Monitor
 
 A public MIT React + Vite dashboard for live / near-live Schumann resonance viewing with source boundaries, NOAA space-weather context, and a clean adapter for future measured Schumann APIs.
 
 ## What it shows
 
 - Live or near-live Schumann spectrogram image with cache-busted refreshes.
+- Short EIRM hero identity with the full name preserved as subtitle.
+- Feed freshness console with local and UTC refresh receipts.
 - Reference Schumann mode grid: SR1 through SR5.
 - Optional measured Schumann JSON mode provider.
 - NOAA planetary Kp context.
 - NOAA GOES X-ray flux context.
 - NOAA real-time solar wind context.
 - Claim-safe source ledger and clear data boundaries.
+- Configured source map for quick audit and debugging.
 
 ## Claim boundary
 
