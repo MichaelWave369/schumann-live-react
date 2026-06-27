@@ -9,6 +9,9 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 - EIRM logo mark: Earth, ionosphere rings, and resonance waveform.
 - Feed freshness console with local and UTC refresh receipts.
 - Station/source selector with configured source, Tomsk visual feed preset, and custom permitted image URL mode.
+- Persistent station/custom source preferences in local browser storage.
+- Visual image health badge: loading, ready, or error.
+- Operator diagnostics panel with copyable runtime JSON.
 - Reference Schumann mode grid: SR1 through SR5.
 - Optional measured Schumann JSON mode provider.
 - Data-confidence badges: visual, reference, measured, NOAA, and ledger.
@@ -19,6 +22,7 @@ A public MIT React + Vite dashboard for live / near-live Schumann resonance view
 - Claim-safe source ledger and clear data boundaries.
 - Configured source map for quick audit and debugging.
 - Mobile-polished layout for phone-sized screens.
+- SVG favicon and web app manifest metadata.
 
 ## Claim boundary
 
@@ -47,6 +51,19 @@ The visual station selector currently includes:
 - **Custom image URL**: a runtime input for any permitted spectrogram image URL.
 
 The selector changes the visual spectrogram only. Reference harmonics and optional measured JSON remain governed separately so the dashboard does not mix image receipts with numerical measurement claims.
+
+## Operator diagnostics
+
+The operator panel exposes a compact runtime JSON snapshot including:
+
+- Current app/feed status.
+- Local and UTC refresh receipts.
+- Active visual spectrogram URL.
+- Image load status and visual failure count.
+- Schumann mode source: reference harmonics or measured JSON.
+- Key NOAA context values.
+
+This is meant to make bug reports and source-audits easier without turning dashboard output into unsupported claims.
 
 ## Optional Schumann JSON shape
 
