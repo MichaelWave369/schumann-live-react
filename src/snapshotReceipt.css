@@ -1,0 +1,25 @@
+.receipt-id {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.85rem;
+  background: rgba(2, 6, 23, 0.36);
+}
+
+.receipt-id span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.receipt-id code {
+  color: #dbeafe;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
