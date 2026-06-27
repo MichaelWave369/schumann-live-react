@@ -14,6 +14,18 @@ It is included in:
 - exported JSON snapshot files
 - the visible Current Snapshot Report panel
 
+## Verifier
+
+The Watchtower panel can verify an exported snapshot JSON file.
+
+The browser reads the JSON, removes the saved `receiptId`, recomputes the local fingerprint for the remaining snapshot payload, and compares the computed value against the saved receipt.
+
+Verifier states mean only:
+
+- `matched`: the exported JSON payload matches its saved receipt ID
+- `mismatch`: the JSON changed, the receipt changed, or the file came from a different hashing mode
+- `error`: the file was not a usable EIRM snapshot JSON file
+
 ## What the receipt ID does not do
 
 The receipt ID is not:
